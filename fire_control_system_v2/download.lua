@@ -1,5 +1,4 @@
-local base = "https://raw.githubusercontent.com/C0desnake/CC-TweakendCode/0396adbb677510f0ab5bd5b86c7761b4347d239b/fire_control_system_v2/"
-
+local base = "https://raw.githubusercontent.com/C0desnake/CC-TweakendCode/main/fire_control_system_v2/"
 local files = {
     "cannonCtr.lua",
     "cannonSettings.dat",
