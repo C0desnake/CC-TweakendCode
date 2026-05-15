@@ -179,7 +179,7 @@ function AuthLoop()
   while true do
      local _, target = os.pullEvent("target_authorized")
      Targets[target] = os.clock()
-     numTargets = numTargets + 1
+     NumTargets = NumTargets + 1
   end
 end
  

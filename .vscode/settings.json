@@ -6,6 +6,7 @@
         "vector",
         "peripheral",
         "parallel",
-        "multishell"
+        "multishell",
+        "shell"
     ]
 }
