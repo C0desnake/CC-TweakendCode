@@ -1,0 +1,15 @@
+{
+  cannon1 = {
+    posX=94,
+    posY=58,
+    posZ=15,
+    rotation=90,
+    firePower=2100,
+    yawCtr="create_radar:auto_yaw_controller_3",
+    pitchCtr="create_radar:auto_pitch_controller_3",
+    fireCtr="create_radar:fire_controller_1",
+    yawLimits={},
+    pitchLimits={},
+    minDistance=0
+  }
+}
