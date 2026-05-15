@@ -4,7 +4,7 @@ ForgetTime = 60
 Targets = {}
 NumTargets = 0
 
-VelAdj = 200.0
+VelAdj = 20.0
 
 CPos = nil
 CRot = nil
@@ -14,8 +14,8 @@ YawCtr = nil
 PitchCtr = nil
 FireCtr = nil
 
-YawLimits = nil
-PitchLimits = nil
+YawLimits = {}
+PitchLimits = {}
 MinDistance = nil
 
 
@@ -124,51 +124,85 @@ end
  
 function FireLoop()
    while true do
+    local foundTarget = false
+
     if NumTargets > 0 then
       local file = fs.open("trackingData.dat", "r")
       local tracked = textutils.unserialize(file.readAll())
       file.close()
-      
-      local clockTime = os.clock()
-      
-      local rTargets = {}
-      
-      for id, t in pairs(Targets) do
-        if tracked[id] ~= nil then
-          Targets[id] = clockTime
-          local tPos = vector.new(tracked[id].pos.x,tracked[id].pos.y,tracked[id].pos.z):sub(CPos)
-          
-          if (tPos:length() > MinDistance) then
-            table.insert(rTargets, {["dist"]=tPos:length(),["pos"]=tPos,["vel"]=tracked[id].vel})
+
+      if tracked ~= nil then
+        local clockTime = os.clock()
+        
+        local rTargets = {}
+        
+        for id, t in pairs(Targets) do
+          if tracked[id] ~= nil then
+            Targets[id] = clockTime
+            local tPos = vector.new(tracked[id].pos.x,tracked[id].pos.y,tracked[id].pos.z):sub(CPos)
+            
+            if (tPos:length() > MinDistance) then
+              table.insert(rTargets, {["dist"]=tPos:length(),["pos"]=tPos,["vel"]=tracked[id].vel})
+            end
+          elseif clockTime-t > ForgetTime then
+            Targets[id] = nil
           end
-        elseif clockTime-t > ForgetTime then
-          Targets[id] = nil
         end
-      end
-      
-      table.sort(rTargets, function(a, b) return a.dist > b.dist end)
-           
-      while #rTargets > 0 do 
-        local target = table.remove(rTargets)
         
-        print(target.vel.x,target.vel.y,target.vel.z)
-        
-        local adjTarget = {
-            ["x"] = target.pos.x + target.vel.x * VelAdj,
-            ["y"] = target.pos.y + target.vel.y * VelAdj,
-            ["z"] = target.pos.z + target.vel.z * VelAdj,
-        }
-        
-        local yaw, pitch = CalcBalist(adjTarget)
-        
-        if yaw ~= nil then   
-           YawCtr.setAngle(yaw)
-           PitchCtr.setAngle(pitch)
-           break
+        table.sort(rTargets, function(a, b) return a.dist > b.dist end)
+
+        while #rTargets > 0 do
+          local target = table.remove(rTargets)
+          
+          print(target.vel.x,target.vel.y,target.vel.z)
+          
+          local adjTarget = {
+              ["x"] = target.pos.x + target.vel.x * VelAdj,
+              ["y"] = target.pos.y + target.vel.y * VelAdj * 0.5,
+              ["z"] = target.pos.z + target.vel.z * VelAdj,
+          }
+          
+          local yaw, pitch = CalcBalist(adjTarget)
+          
+          if yaw ~= nil then
+            yaw = yaw % 360
+            if yaw < 0 then yaw = yaw + 360 end
+
+            local allowedYaw = false
+            for _, lim in pairs(YawLimits) do
+              if lim.min < yaw and yaw < lim.max then
+                allowedYaw = true
+                break
+              end
+            end
+
+            
+            local allowedPitch = false
+            for _, lim in pairs(PitchLimits) do
+              if lim.min < pitch and pitch < lim.max then
+                allowedPitch = true
+                break
+              end
+            end
+
+            if allowedYaw and allowedPitch then
+              YawCtr.setAngle(yaw)
+              PitchCtr.setAngle(pitch)
+              foundTarget = true
+              break
+            end
+          end
         end
       end
     else
+      FireCtr.fireOff()
       os.sleep(0.1)
+    end
+
+    if foundTarget then
+      FireCtr.fireOn()
+    else
+      FireCtr.fireOff()
     end
     
     os.sleep(0.01)

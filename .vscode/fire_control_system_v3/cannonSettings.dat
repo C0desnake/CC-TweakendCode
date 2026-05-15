@@ -1,15 +1,17 @@
 {
-  cannon1 = {
-    posX=94,
-    posY=58,
-    posZ=15,
+  [0] = {
+    position={
+        x=94,
+        y=58,
+        z=15,
+    },
     rotation=90,
     firePower=2100,
     yawCtr="create_radar:auto_yaw_controller_3",
     pitchCtr="create_radar:auto_pitch_controller_3",
     fireCtr="create_radar:fire_controller_1",
-    yawLimits={0={min=140,max=310}},
-    pitchLimits={0={min=-40,max=90}},
-    minDistance=0
+    yawLimits={[1]={min=140,max=310}},
+    pitchLimits={[1]={min=-40,max=90}},
+    minDistance=10
   }
 }

@@ -31,15 +31,20 @@ while true do
 
   local ct = os.clock()
 
+  local sendTracks = {}
+
   for id, track in pairs(Tracks) do
+    print(id, ct - track.ct)
     if ct - track.ct > ForgetTime then
       Tracks[id] = nil
+    elseif ct - track.ct < 1 then
+      sendTracks[id] = track
     end
   end
 
-  local file = io.open("trackingData.dat", "w")
+  local file = fs.open("trackingData.dat", "w")
   if file ~= nil then
-    file:write(textutils.serialise(Tracks))
+    file:write(textutils.serialise(sendTracks))
     file:close()
   end
 
