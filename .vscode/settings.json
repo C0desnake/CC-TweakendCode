@@ -7,6 +7,10 @@
         "peripheral",
         "parallel",
         "multishell",
-        "shell"
+        "shell",
+        "term",
+        "colors",
+        "rednet",
+        "http"
     ]
 }

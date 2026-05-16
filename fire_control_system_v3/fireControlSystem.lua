@@ -1,32 +1,51 @@
-Radars = { peripheral.find("create_radar:monitor") }
-Cannons = {}
+local radars = { peripheral.find("create_radar:monitor") }
+local cannons = {}
 
-Exclude = {["5947369d-40a8-4bc5-8ab2-15a3c7c777d8"]=true}
-Tracks = {}
-ActiveTracks = {}
-AuthorizedTargets = {}
-NumTargets = 0
+local exclude = {["5947369d-40a8-4bc5-8ab2-15a3c7c777d8"]=true}
+local tracks = {}
+local activeTracks = {}
+local warnedTargets = {}
+local authorizedTargets = {}
+local numTargets = 0
 
-VelAdj = 20.0
-ForgetTime = 60
+local velComp = 20.0
+local forgetTime = 60
+local attackRange = 1000.0
+local warningRange = 1000.0
+
+rednet.open(peripheral.getName(peripheral.find("modem")))
 
 -- Initiate cannons
-function InitiateCannons()
-    if not fs.exists("cannonSettings.dat") then
+function Initiatecannons()
+    if not fs.exists("settings.dat") then
         printError("Could not find settings for cannons")
         return false
     end
 
-    local file = fs.open("cannonSettings.dat", "r");
+    local file = fs.open("settings.dat", "r");
     local settings = textutils.unserialize(file.readAll())
     file.close()
 
     if settings == nil then
-        printError("Could not read cannonSettings")
+        printError("Could not read settings")
         return false
     end
 
-    for _, cs in pairs(settings) do
+    if tonumber(settings.velComp) ~= nil then
+        velComp = settings.velComp
+    end
+    if tonumber(settings.forgetTime) ~= nil then
+        forgetTime = settings.forgetTime
+    end
+    if tonumber(settings.attackRange) ~= nil then
+        attackRange = settings.attackRange
+    end
+    if tonumber(settings.attackRange) ~= nil then
+        warningRange = settings.warningRange
+    end
+
+
+    for _, cs in pairs(settings.cannons) do
         if cs.position == nil then
             printError("No cannon position defined")
             return false
@@ -36,7 +55,11 @@ function InitiateCannons()
             return false
         end
         if cs.firePower == nil then
-            printError("No cannon fire firePower defined")
+            printError("No cannon fire Power defined")
+            return false
+        end
+        if cs.dragComp == nil then
+            printError("No cannon drag compensation defined")
             return false
         end
         if cs.yawCtr == nil then
@@ -68,6 +91,7 @@ function InitiateCannons()
             pos = {x=cs.position.x+0.5,y=cs.position.y+0.5,z=cs.position.z+0.5},
             rot = cs.rotation,
             fp = cs.firePower,
+            dragComp = cs.dragComp,
             yawCtr = peripheral.wrap(cs.yawCtr),
             pitchCtr = peripheral.wrap(cs.pitchCtr),
             fireCtr = peripheral.wrap(cs.fireCtr),
@@ -89,26 +113,26 @@ function InitiateCannons()
             return false
         end
 
-        table.insert(Cannons, cannon)
+        table.insert(cannons, cannon)
     end
     return true
 end
 
 -- Update the curent tracked entities
 function UpdateTracks()
-    for _, radar in pairs(Radars) do
+    for _, radar in pairs(radars) do
         for _, track in pairs(radar.getTracks()) do
-            if Tracks[track.id] == nil or Tracks[track.id].scannedTime < track.scannedTime then
+            if tracks[track.id] == nil or tracks[track.id].scannedTime < track.scannedTime then
                 local vel = track.velocity
 
-                if Tracks[track.id] ~= nil then
-                    local dt = math.max(0.05, track.scannedTime - Tracks[track.id].scannedTime)
-                    vel.x = (track.position.x - Tracks[track.id].pos.x) / dt
-                    vel.y = (track.position.y - Tracks[track.id].pos.y) / dt
-                    vel.z = (track.position.z - Tracks[track.id].pos.z) / dt
+                if tracks[track.id] ~= nil then
+                    local dt = math.max(0.05, track.scannedTime - tracks[track.id].scannedTime)
+                    vel.x = (track.position.x - tracks[track.id].pos.x) / dt
+                    vel.y = (track.position.y - tracks[track.id].pos.y) / dt
+                    vel.z = (track.position.z - tracks[track.id].pos.z) / dt
                 end
 
-                Tracks[track.id] = {
+                tracks[track.id] = {
                     pos = track.position,
                     vel = vel,
                     scannedTime = track.scannedTime,
@@ -120,26 +144,30 @@ function UpdateTracks()
 
     local ct = os.clock()
 
-    ActiveTracks = {}
+    activeTracks = {}
 
-    for id, track in pairs(Tracks) do
-        if ct - track.t > ForgetTime then
-            Tracks[id] = nil
-            if AuthorizedTargets[id] ~= nil then NumTargets = NumTargets-1 end
-            AuthorizedTargets[id] = nil
+    for id, track in pairs(tracks) do
+        if ct - track.t > forgetTime then
+            tracks[id] = nil
+            if authorizedTargets[id] ~= nil then numTargets = numTargets-1 end
+            authorizedTargets[id] = nil
         elseif ct - track.t < 1 then
-            ActiveTracks[id] = true
+            activeTracks[id] = true
         end
     end
 end
 
 -- Autherize tracked entities for trgeting
 function AuthorizeTargets()
-    for id, _ in pairs(ActiveTracks) do
-        if AuthorizedTargets[id] == nil and Exclude[id] == nil then
-            print("Target authorized: "..id)
-            NumTargets = NumTargets+1
-            AuthorizedTargets[id] = true;
+    for id, _ in pairs(activeTracks) do
+        if authorizedTargets[id] == nil and exclude[id] == nil then
+            local pos = vector.new(tracks[id].pos.x, tracks[id].pos.y, tracks[id].pos.z)
+
+            if pos:length() < attackRange then
+                print("Target authorized: "..id)
+                numTargets = numTargets+1
+                authorizedTargets[id] = true;
+            end
         end
     end
 end
@@ -156,7 +184,7 @@ function CalcBalist(pos, can)
     return nil
   end
 
-  local pitch = math.deg(math.atan((can.fp - math.sqrt(D)), pd))
+  local pitch = math.deg(math.atan((can.fp - math.sqrt(D)), pd) + can.dragComp * pos:length())
 
   return yaw, pitch
 end
@@ -164,20 +192,20 @@ end
 -- Aim and shoot autherize targets
 function ShootTargets()
     local clockTime = os.clock()
-    for _, can in pairs(Cannons) do
+    for _, can in pairs(cannons) do
         local foundTarget = false
 
-        if NumTargets > 0 then
+        if numTargets > 0 then
             local rTargets = {}
             
-            for id, _ in pairs(AuthorizedTargets) do
-                if ActiveTracks[id] ~= nil and Tracks[id] ~= nil then
+            for id, _ in pairs(authorizedTargets) do
+                if activeTracks[id] ~= nil and tracks[id] ~= nil then
                     local tPos = vector.new(
-                        Tracks[id].pos.x - can.pos.x,
-                        Tracks[id].pos.y - can.pos.y,
-                        Tracks[id].pos.z - can.pos.z)
+                        tracks[id].pos.x - can.pos.x,
+                        tracks[id].pos.y - can.pos.y,
+                        tracks[id].pos.z - can.pos.z)
                     if (tPos:length() > can.minDistance) then
-                        table.insert(rTargets, {["dist"]=tPos:length(),["pos"]=tPos,["vel"]=Tracks[id].vel})
+                        table.insert(rTargets, {["dist"]=tPos:length(),["pos"]=tPos,["vel"]=tracks[id].vel})
                     end
                 end
             end
@@ -187,11 +215,11 @@ function ShootTargets()
             while #rTargets > 0 do
                 local target = table.remove(rTargets)
                 
-                local adjTarget = {
-                    ["x"] = target.pos.x + target.vel.x * VelAdj,
-                    ["y"] = target.pos.y + target.vel.y * VelAdj * 0.5,
-                    ["z"] = target.pos.z + target.vel.z * VelAdj,
-                }
+                local adjTarget = vector.new(
+                    target.pos.x + target.vel.x * velComp,
+                    target.pos.y + target.vel.y * velComp * 0.5,
+                    target.pos.z + target.vel.z * velComp
+                )
                 
                 local yaw, pitch = CalcBalist(adjTarget, can)
                 
@@ -236,15 +264,57 @@ function ShootTargets()
     end
 end
 
+-- Warn targets
+function WarnTargets()
+    local ct = os.clock()
 
-if InitiateCannons() then
-    print("Fire controler system started!")
+    for id, _ in pairs(activeTracks) do
+        if exclude[id] == nil then
+            local pos = vector.new(tracks[id].pos.x, tracks[id].pos.y, tracks[id].pos.z)
 
+            if pos:length() < warningRange and (warnedTargets[id] == nil or warnedTargets[id] < ct) then
+                warnedTargets[id] = ct + 30
+                local msgData = {}
+                msgData.msg = "YOU ARE ENTERING A RESTRICTED ZONE: LEAF IMMEDIATELY!"
+                msgData.name = "Defence system"
+                msgData.posX = pos.x
+                msgData.posY = pos.y
+                msgData.posZ = pos.z
+                msgData.range = 25
+                
+                rednet.broadcast(msgData, "comMessage")
+            end
+        end
+    end
+end
+
+function MainLoop()
     while true do
         UpdateTracks()
         AuthorizeTargets()
         ShootTargets()
+        WarnTargets()
 
         os.sleep(0.05)
     end
+end
+
+function ExcludeUpdates()
+    while true do
+        local _, exclude = os.pullEvent("target_excludes")
+        exclude = exclude
+
+        for id,_ in pairs(exclude) do
+            if authorizedTargets[id] ~= nil then
+                print("Target de-authorized: "..id)
+            end
+        end
+    end
+end
+
+
+if Initiatecannons() then
+    print("Fire controler system started!")
+
+    parallel.waitForAll(MainLoop, ExcludeUpdates)
 end
