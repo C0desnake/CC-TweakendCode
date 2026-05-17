@@ -229,7 +229,7 @@ function ShootTargets()
 
                     local allowedYaw = false
                     for _, lim in pairs(can.yawLimits) do
-                        if lim.min < yaw and yaw < lim.max then
+                        if lim.min <= yaw and yaw <= lim.max then
                             allowedYaw = true
                             break
                         end
@@ -238,7 +238,7 @@ function ShootTargets()
                     
                     local allowedPitch = false
                     for _, lim in pairs(can.pitchLimits) do
-                        if lim.min < pitch and pitch < lim.max then
+                        if lim.min <= pitch and pitch <= lim.max then
                             allowedPitch = true
                             break
                         end

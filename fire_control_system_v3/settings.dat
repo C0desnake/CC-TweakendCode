@@ -1,5 +1,9 @@
 {
   securityLevel = 1,
+  velComp = 20.0,
+  forgetTime = 60,
+  warningRadius = 900,
+  attackRadius = 800,
   cannons = {
     [1] = {
       position={
@@ -8,11 +12,28 @@
           z=15,
       },
       rotation=90,
-      firePower=2100,
+      firePower=2700,
+      dragComp=0.0,
       yawCtr="create_radar:auto_yaw_controller_3",
       pitchCtr="create_radar:auto_pitch_controller_3",
       fireCtr="create_radar:fire_controller_1",
       yawLimits={[1]={min=140,max=310}},
+      pitchLimits={[1]={min=-40,max=90}},
+      minDistance=10
+    },
+    [2] = {
+      position={
+          x=94,
+          y=58,
+          z=54,
+      },
+      rotation=90,
+      firePower=2700,
+      dragComp=0.0,
+      yawCtr="create_radar:auto_yaw_controller_4",
+      pitchCtr="create_radar:auto_pitch_controller_4",
+      fireCtr="create_radar:fire_controller_2",
+      yawLimits={[1]={min=230,max=360},[2]={min=0,max=45}},
       pitchLimits={[1]={min=-40,max=90}},
       minDistance=10
     }

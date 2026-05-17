@@ -93,11 +93,9 @@ if rednet.isOpen() then
                 end
             end
 
-            
-
             os.queueEvent("target_excludes", excludes)
 
-            local id, message = rednet.receive("defence_permission_update", 1200)
+            local id, message = rednet.receive("authentication_broadcast", 1200)
 
             if id ~= nil and message.sign ~= nil and message.msg ~= nil then
                 if ed25519.verify(publicKey, message.msg, message.sign) then
